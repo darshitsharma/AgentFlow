@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentFlow — Architecture &amp; Design Document</title>
+    <style>
+        @page {
+            margin: 1.5cm;
+            size: A4;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #1a1a2e;
+            line-height: 1.65;
+            background: #fff;
+            max-width: 850px;
+            margin: 0 auto;
+            padding: 40px 32px;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #0f3460;
+            border-bottom: 3px solid #e94560;
+            padding-bottom: 8px;
+            margin-bottom: 6px;
+        }
+
+        h2 {
+            font-size: 21px;
+            color: #16213e;
+            margin-top: 36px;
+            margin-bottom: 12px;
+            border-left: 4px solid #e94560;
+            padding-left: 12px;
+        }
+
+        h3 {
+            font-size: 16px;
+            color: #0f3460;
+            margin-top: 20px;
+            margin-bottom: 8px;
+        }
+
+        p {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        ul,
+        ol {
+            margin-bottom: 12px;
+            padding-left: 24px;
+            font-size: 14px;
+        }
+
+        li {
+            margin-bottom: 4px;
+        }
+
+        code {
+            background: #f0f0f5;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 12.5px;
+        }
+
+        pre {
+            background: #f4f4f8;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 14px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.5;
+            margin: 10px 0 16px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 18px;
+            font-size: 13px;
+        }
+
+        th {
+            background: #16213e;
+            color: #fff;
+            text-align: left;
+            padding: 8px 12px;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 7px 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tr:nth-child(even) td {
+            background: #f9f9fc;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #e94560;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 4px;
+        }
+
+        .badge-blue {
+            background: #0f3460;
+        }
+
+        .badge-green {
+            background: #1a8a5c;
+        }
+
+        .cover {
+            text-align: center;
+            padding: 80px 0 60px;
+            page-break-after: always;
+        }
+
+        .cover h1 {
+            font-size: 38px;
+            border: none;
+            margin-bottom: 12px;
+        }
+
+        .cover .subtitle {
+            font-size: 18px;
+            color: #555;
+        }
+
+        .cover .meta {
+            margin-top: 40px;
+            font-size: 14px;
+            color: #777;
+        }
+
+        .diagram-box {
+            background: #f8f9fb;
+            border: 2px solid #d0d5dd;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 16px 0;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre;
+            line-height: 1.5;
+            overflow-x: auto;
+        }
+
+        .flow-box {
+            background: linear-gradient(135deg, #f0f4ff, #fff);
+            border: 1px solid #c0c8e0;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+        }
+
+        .section-note {
+            background: #fffbe6;
+            border-left: 4px solid #f0ad4e;
+            padding: 10px 14px;
+            margin: 12px 0;
+            border-radius: 0 6px 6px 0;
+            font-size: 13px;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .toc a {
+            color: #0f3460;
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        .toc li {
+            margin-bottom: 6px;
+        }
+
+        .arch-layer {
+            border: 2px solid;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin: 8px 0;
+        }
+
+        .layer-ui {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .layer-api {
+            border-color: #10b981;
+            background: #ecfdf5;
+        }
+
+        .layer-engine {
+            border-color: #f59e0b;
+            background: #fffbeb;
+        }
+
+        .layer-data {
+            border-color: #8b5cf6;
+            background: #f5f3ff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- COVER PAGE -->
+    <div class="cover">
+        <p style="font-size:14px; color:#e94560; font-weight:700; letter-spacing:2px;">YUNO AI — ENGINEER HIRING
+            CHALLENGE</p>
+        <h1>AgentFlow</h1>
+        <p class="subtitle">AI Agent Orchestration Platform</p>
+        <p class="subtitle" style="font-size:15px; margin-top:8px;">Architecture &amp; Design Document</p>
+        <div class="meta">
+            <p><strong>Author:</strong> Darshit</p>
+            <p><strong>Category:</strong> AI-SOLUTION</p>
+            <p><strong>Date:</strong> May 2026</p>
+            <p style="margin-top:20px; font-size:12px; color:#aaa;">Confidential — Prepared for Yuno AI Team</p>
+        </div>
+    </div>
+
+    <!-- TABLE OF CONTENTS -->
+    <h2>Table of Contents</h2>
+    <ol class="toc">
+        <li><a href="#s1">Executive Summary</a></li>
+        <li><a href="#s2">System Architecture Overview</a></li>
+        <li><a href="#s3">Technology Stack &amp; Justification</a></li>
+        <li><a href="#s4">Project Structure</a></li>
+        <li><a href="#s5">Data Model &amp; Schema Design</a></li>
+        <li><a href="#s6">Agent Lifecycle — Create, Configure, Execute</a></li>
+        <li><a href="#s7">LangGraph Runtime Engine — Deep Dive</a></li>
+        <li><a href="#s8">Tool Calling Architecture</a></li>
+        <li><a href="#s9">Semantic Memory System</a></li>
+        <li><a href="#s10">Workflow Engine — Multi-Agent Orchestration</a></li>
+        <li><a href="#s11">Telegram Integration</a></li>
+        <li><a href="#s12">Frontend Architecture</a></li>
+        <li><a href="#s13">Monitoring &amp; Observability</a></li>
+        <li><a href="#s14">Testing Strategy</a></li>
+        <li><a href="#s15">Security Considerations</a></li>
+        <li><a href="#s16">Deployment — Docker &amp; Local</a></li>
+        <li><a href="#s17">Trade-offs &amp; Design Decisions</a></li>
+    </ol>
+
+    <!-- 1. EXECUTIVE SUMMARY -->
+    <h2 id="s1">1. Executive Summary</h2>
+    <p>
+        <strong>AgentFlow</strong> is a full-stack AI agent orchestration platform that allows users to create,
+        configure, and connect AI agents into collaborative workflows. Each agent runs on a <strong>real LangGraph
+            runtime</strong> powered by a local Ollama LLM (<code>llama3.1:8b</code>), executes real tools (web search,
+        code execution, calculator, weather, etc.), and maintains semantic memory across conversations.
+    </p>
+    <p>
+        Agents can be connected into visual <strong>multi-agent workflows</strong> using a drag-and-drop React Flow
+        builder with support for sequential pipelines, fan-out/fan-in patterns, conditional routing, and feedback loops.
+        The platform integrates with <strong>Telegram</strong> as an external messaging channel, enabling end-users to
+        interact with individual agents or entire workflows conversationally.
+    </p>
+    <p>Key capabilities at a glance:</p>
+    <ul>
+        <li><strong>15+ configurable dimensions</strong> per agent (name, role, system prompt, model, tools, channels,
+            schedule, memory, skills, guardrails, interaction rules, max tokens, temperature, active status)</li>
+        <li><strong>8 executable tools</strong> — web search, calculator, code executor, file reader, weather,
+            summarizer, datetime, remember-fact</li>
+        <li><strong>Two-tier semantic memory</strong> — short-term (per-conversation) + long-term (persistent facts)
+            using ChromaDB + sentence-transformers</li>
+        <li><strong>Visual workflow builder</strong> with fan-in merging, conditional edges, feedback loops, and 2
+            pre-built templates</li>
+        <li><strong>Telegram integration</strong> supporting both single-agent and full-workflow routing with background
+            processing and deduplication</li>
+        <li><strong>Live monitoring</strong> dashboard with real-time logs, inter-agent messages, and token tracking
+        </li>
+        <li><strong>16 automated tests</strong> covering agent CRUD, workflow execution, and message delivery</li>
+    </ul>
+
+    <!-- 2. SYSTEM ARCHITECTURE -->
+    <h2 id="s2" class="page-break">2. System Architecture Overview</h2>
+
+    <p>The system follows a <strong>clean three-layer architecture</strong> with clear separation between the UI layer,
+        API/runtime layer, and data/persistence layer:</p>
+
+    <div class="diagram-box">
+        ┌─────────────────────────────────────────────────────────────────────┐
+        │ PRESENTATION LAYER │
+        │ │
+        │ ┌──────────────┐ ┌──────────────┐ ┌───────────┐ ┌──────────┐ │
+        │ │ AgentsPage │ │WorkflowsPage │ │ ChatPage │ │ Monitor │ │
+        │ │ (CRUD + Mem)│ │(React Flow) │ │ (Live) │ │ (Logs) │ │
+        │ └──────┬───────┘ └──────┬───────┘ └─────┬─────┘ └────┬─────┘ │
+        │ └─────────────────┼────────────────┼──────────────┘ │
+        │ │ REST API (fetch) │
+        ├────────────────────────────┼────────────────────────────────────────┤
+        │ API GATEWAY LAYER │
+        │ │
+        │ ┌──────────────────────────────────────────────────────────────┐ │
+        │ │ FastAPI Application │ │
+        │ │ /api/agents /api/workflows /api/chat /api/memory │ │
+        │ │ /api/messages /api/logs /api/telegram │ │
+        │ └──────────────────────┬───────────────────────────────────────┘ │
+        │ │ │
+        ├──────────────────────────┼──────────────────────────────────────────┤
+        │ RUNTIME ENGINE LAYER │
+        │ │
+        │ ┌─────────────┐ ┌────────────────┐ ┌────────────────────────┐ │
+        │ │ runtime.py │ │workflow_engine │ │ telegram.py │ │
+        │ │ (LangGraph) │ │(BFS executor) │ │ (Webhook + bg task) │ │
+        │ └──────┬───────┘ └───────┬────────┘ └───────────┬────────────┘ │
+        │ │ │ │ │
+        │ ┌──────┴───────┐ ┌──────┴───────┐ ┌────────────┴────────┐ │
+        │ │ tools.py │ │ memory.py │ │ Ollama (LLM) │ │
+        │ │ (8 tools) │ │ (ChromaDB) │ │ llama3.1:8b │ │
+        │ └──────────────┘ └──────────────┘ └─────────────────────┘ │
+        │ │
+        ├─────────────────────────────────────────────────────────────────────┤
+        │ DATA / PERSISTENCE LAYER │
+        │ │
+        │ ┌───────────────────┐ ┌───────────────┐ ┌──────────────────┐ │
+        │ │ PostgreSQL 16 │ │ ChromaDB │ │ Redis │ │
+        │ │ (SQLAlchemy │ │ (Vectors + │ │ (Pub/Sub for │ │
+        │ │ async ORM) │ │ Embeddings)│ │ inter-agent) │ │
+        │ └───────────────────┘ └───────────────┘ └──────────────────┘ │
+        └─────────────────────────────────────────────────────────────────────┘
+
+        External Integrations:
+        ┌────────────┐ ┌────────────┐
+        │ Telegram │◄────────►│ ngrok │◄──────► FastAPI /api/telegram/webhook
+        │ Bot API │ HTTPS │ (tunnel) │ HTTP
+        └────────────┘ └────────────┘
+    </div>
+
+    <h3>Layer Responsibilities</h3>
+    <div class="arch-layer layer-ui">
+        <strong>🖥️ Presentation Layer (React + TypeScript + Tailwind)</strong><br>
+        Agent management, visual workflow builder, live chat interface, monitoring dashboard. All communication via REST
+        API.
+    </div>
+    <div class="arch-layer layer-api">
+        <strong>🔌 API Gateway Layer (FastAPI)</strong><br>
+        RESTful endpoints for all CRUD operations, chat, memory management, Telegram webhooks. CORS-enabled, Pydantic
+        validation.
+    </div>
+    <div class="arch-layer layer-engine">
+        <strong>⚙️ Runtime Engine Layer</strong><br>
+        LangGraph-based agent execution with tool calling, hallucination interception, semantic memory injection. BFS
+        workflow engine with fan-in/fan-out, conditional routing, and loop control.
+    </div>
+    <div class="arch-layer layer-data">
+        <strong>💾 Data / Persistence Layer</strong><br>
+        PostgreSQL for relational data (agents, workflows, messages, logs). ChromaDB for vector embeddings (short-term +
+        long-term memory). Redis for inter-agent pub/sub.
+    </div>
+
+    <!-- 3. TECHNOLOGY STACK -->
+    <h2 id="s3" class="page-break">3. Technology Stack &amp; Justification</h2>
+
+    <h3>3.1 Backend</h3>
+    <table>
+        <tr>
+            <th>Technology</th>
+            <th>Version</th>
+            <th>Why This Choice</th>
+        </tr>
+        <tr>
+            <td><strong>Python</strong></td>
+            <td>3.10+</td>
+            <td>Dominant language in the AI/ML ecosystem. All major agent frameworks (LangGraph, LangChain, CrewAI) are
+                Python-first. Async support via asyncio.</td>
+        </tr>
+        <tr>
+            <td><strong>FastAPI</strong></td>
+            <td>0.115.0</td>
+            <td>Async-native, auto-generated OpenAPI docs, Pydantic validation, dependency injection. Ideal for
+                AI-serving workloads that are I/O-bound (LLM calls, DB queries).</td>
+        </tr>
+        <tr>
+            <td><strong>SQLAlchemy (async)</strong></td>
+            <td>2.0.35</td>
+            <td>Industry-standard Python ORM. Async mode with <code>asyncpg</code> for non-blocking DB access. Mapped
+                columns with type annotations.</td>
+        </tr>
+        <tr>
+            <td><strong>PostgreSQL</strong></td>
+            <td>16</td>
+            <td>JSONB support for flexible agent configuration (tools, channels, guardrails). ACID compliance for
+                message integrity. Mature ecosystem.</td>
+        </tr>
+        <tr>
+            <td><strong>LangGraph</strong></td>
+            <td>0.2.34</td>
+            <td><em>See Section 3.3 for detailed comparison.</em></td>
+        </tr>
+        <tr>
+            <td><strong>Ollama</strong></td>
+            <td>Latest</td>
+            <td>Run LLMs locally — no API keys, no cost, full privacy. Supports tool calling natively via
+                <code>/api/chat</code>. Apple Silicon optimized (M3 Max).
+            </td>
+        </tr>
+        <tr>
+            <td><strong>ChromaDB</strong></td>
+            <td>0.5.7</td>
+            <td>Lightweight embedded vector database. Perfect for local-first semantic search without external
+                infrastructure.</td>
+        </tr>
+        <tr>
+            <td><strong>sentence-transformers</strong></td>
+            <td>3.1.1</td>
+            <td>Local embeddings with <code>all-MiniLM-L6-v2</code> (~80MB). No API calls for memory indexing — fully
+                offline.</td>
+        </tr>
+        <tr>
+            <td><strong>ddgs</strong></td>
+            <td>8.1.1</td>
+            <td>DuckDuckGo search without API keys. Free, no rate-limit tokens needed. Upgraded from
+                <code>duckduckgo-search</code> for stability.
+            </td>
+        </tr>
+        <tr>
+            <td><strong>httpx</strong></td>
+            <td>0.27.2</td>
+            <td>Async HTTP client for Ollama API calls and Telegram Bot API communication.</td>
+        </tr>
+        <tr>
+            <td><strong>Redis</strong></td>
+            <td>7</td>
+            <td>Pub/Sub channel for asynchronous inter-agent messaging. Lightweight, fast.</td>
+        </tr>
+    </table>
+
+    <h3>3.2 Frontend</h3>
+    <table>
+        <tr>
+            <th>Technology</th>
+            <th>Version</th>
+            <th>Why This Choice</th>
+        </tr>
+        <tr>
+            <td><strong>React</strong></td>
+            <td>18.3</td>
+            <td>Component-based architecture, huge ecosystem, well-suited for complex interactive UIs like workflow
+                builders.</td>
+        </tr>
+        <tr>
+            <td><strong>TypeScript</strong></td>
+            <td>5.6</td>
+            <td>Type safety for API contracts — interfaces match Pydantic schemas exactly, catching integration bugs at
+                compile time.</td>
+        </tr>
+        <tr>
+            <td><strong>Vite</strong></td>
+            <td>5.4</td>
+            <td>Sub-second HMR, native ESM, fast builds. Modern alternative to Webpack/CRA.</td>
+        </tr>
+        <tr>
+            <td><strong>React Flow</strong></td>
+            <td>11.11</td>
+            <td>Purpose-built for node-based graph editors. Handles drag-and-drop, zoom, pan, and edge rendering out of
+                the box.</td>
+        </tr>
+        <tr>
+            <td><strong>Tailwind CSS</strong></td>
+            <td>3.4</td>
+            <td>Utility-first CSS — rapid UI development without managing separate stylesheets. Dark theme throughout.
+            </td>
+        </tr>
+        <tr>
+            <td><strong>Lucide React</strong></td>
+            <td>0.447</td>
+            <td>Consistent, tree-shakable icon set (Bot, Workflow, MessageSquare, Brain, etc.).</td>
+        </tr>
+    </table>
+
+    <h3>3.3 Why LangGraph over CrewAI / AutoGen?</h3>
+    <table>
+        <tr>
+            <th>Criterion</th>
+            <th>LangGraph</th>
+            <th>CrewAI</th>
+            <th>AutoGen</th>
+        </tr>
+        <tr>
+            <td>Graph-based control flow</td>
+            <td class="badge-green" style="color:green">✅ Native StateGraph</td>
+            <td>❌ Sequential only</td>
+            <td>❌ Chat-based</td>
+        </tr>
+        <tr>
+            <td>Custom tool integration</td>
+            <td style="color:green">✅ LangChain @tool</td>
+            <td>⚠️ Limited</td>
+            <td>⚠️ Complex setup</td>
+        </tr>
+        <tr>
+            <td>State management</td>
+            <td style="color:green">✅ TypedDict state</td>
+            <td>❌ Implicit</td>
+            <td>❌ Implicit</td>
+        </tr>
+        <tr>
+            <td>Ollama compatibility</td>
+            <td style="color:green">✅ First-class</td>
+            <td>⚠️ Partial</td>
+            <td>⚠️ Requires wrappers</td>
+        </tr>
+        <tr>
+            <td>Streaming support</td>
+            <td style="color:green">✅ Built-in</td>
+            <td>❌ N/A</td>
+            <td>⚠️ Limited</td>
+        </tr>
+        <tr>
+            <td>Debugging &amp; observability</td>
+            <td style="color:green">✅ Step-by-step trace</td>
+            <td>❌ Black box</td>
+            <td>❌ Black box</td>
+        </tr>
+    </table>
+    <p><strong>Decision:</strong> LangGraph gives us explicit control over the agent execution graph — each node is a
+        function, edges carry state, and we can insert tool nodes, memory nodes, and condition checks at precise points.
+        This maps perfectly to our workflow engine's BFS execution model.</p>
+
+    <!-- 4. PROJECT STRUCTURE -->
+    <h2 id="s4" class="page-break">4. Project Structure</h2>
+    <pre>
+agents/
+├── docker-compose.yml          # Full-stack Docker orchestration
+├── .gitignore                  # Excludes venv, .env, data, node_modules
+├── README.md                   # Setup instructions + architecture diagram
+│
+├── backend/
+│   ├── Dockerfile              # Multi-stage Python build
+│   ├── requirements.txt        # 20 pinned dependencies
+│   ├── .env                    # Secrets (DB URL, Telegram token)
+│   ├── app/
+│   │   ├── main.py             # FastAPI app, lifespan, CORS, router mounting
+│   │   ├── config.py           # Pydantic Settings (env vars)
+│   │   ├── database.py         # Async SQLAlchemy engine + session factory
+│   │   ├── models.py           # 5 ORM models (Agent, Workflow, Execution, Message, Log)
+│   │   ├── schemas.py          # Pydantic request/response schemas
+│   │   ├── runtime.py          # ⭐ LangGraph agent execution engine
+│   │   ├── workflow_engine.py  # ⭐ BFS workflow orchestrator
+│   │   ├── tools.py            # 8 executable tools with @tool decorator
+│   │   ├── memory.py           # ChromaDB two-tier semantic memory
+│   │   └── routers/
+│   │       ├── agents.py       # CRUD endpoints for agents
+│   │       ├── workflows.py    # CRUD + execute endpoints for workflows
+│   │       ├── chat.py         # Chat endpoint (agent execution)
+│   │       ├── messages.py     # Message history queries
+│   │       ├── logs.py         # Agent log queries
+│   │       ├── memory_routes.py# Memory CRUD + recall endpoints
+│   │       └── telegram.py     # Telegram webhook + bot integration
+│   └── tests/
+│       ├── conftest.py         # Shared test fixtures
+│       └── test_critical_paths.py  # 16 tests (CRUD, workflows, messages)
+│
+└── frontend/
+    ├── Dockerfile              # Multi-stage build (node → nginx)
+    ├── nginx.conf              # SPA routing + API proxy
+    ├── package.json            # React 18 + React Flow + Tailwind
+    ├── vite.config.ts          # Vite config with API proxy
+    └── src/
+        ├── App.tsx             # Router + sidebar navigation
+        ├── api.ts              # Typed API client (all endpoints)
+        ├── pages/
+        │   ├── AgentsPage.tsx  # Agent cards + create/edit form + memory viewer
+        │   ├── WorkflowsPage.tsx # React Flow editor + templates + output panel
+        │   ├── ChatPage.tsx    # Live chat with agent selection
+        │   └── MonitorPage.tsx # Real-time logs + token tracking
+        └── components/
+            └── AgentForm.tsx   # Reusable agent configuration form
+</pre>
+
+    <!-- 5. DATA MODEL -->
+    <h2 id="s5" class="page-break">5. Data Model &amp; Schema Design</h2>
+
+    <div class="diagram-box">
+        ┌─────────────────────┐ ┌──────────────────────┐
+        │ agents │ │ workflows │
+        ├─────────────────────┤ ├──────────────────────┤
+        │ id (PK, UUID) │ │ id (PK, UUID) │
+        │ name │ │ name │
+        │ role │ │ description │
+        │ system_prompt │ │ graph (JSON) │
+        │ model │ │ channels (JSON[]) │
+        │ tools (JSON[]) │ │ is_template │
+        │ channels (JSON[]) │ │ is_active │
+        │ schedule │ │ created_at │
+        │ memory_enabled │ │ updated_at │
+        │ max_tokens │ └──────────┬───────────┘
+        │ temperature │ │ 1:N
+        │ guardrails (JSON) │ ┌──────────┴───────────┐
+        │ skills (JSON[]) │ │ workflow_executions │
+        │ interaction_rules │ ├──────────────────────┤
+        │ is_active │ │ id (PK, UUID) │
+        │ created_at │ │ workflow_id (FK) │
+        │ updated_at │ │ status │
+        └──────────┬──────────┘ │ input_data (JSON) │
+        │ 1:N │ output_data (JSON) │
+        ┌──────────┴──────────┐ │ started_at │
+        │ messages │ │ completed_at │
+        ├─────────────────────┤ └──────────────────────┘
+        │ id (PK, UUID) │
+        │ agent_id (FK) │ ┌──────────────────────┐
+        │ role │ │ agent_logs │
+        │ content │ ├──────────────────────┤
+        │ channel │ │ id (PK, UUID) │
+        │ meta_info (JSON) │ │ agent_id (FK) │
+        │ tokens_used │ │ workflow_exec_id │
+        │ cost │ │ level │
+        │ created_at │ │ event │
+        └─────────────────────┘ │ details (JSON) │
+        │ created_at │
+        └──────────────────────┘
+    </div>
+
+    <h3>Agent Configuration — 15+ Dimensions</h3>
+    <table>
+        <tr>
+            <th>Dimension</th>
+            <th>Type</th>
+            <th>Purpose</th>
+        </tr>
+        <tr>
+            <td>name</td>
+            <td>String</td>
+            <td>Display name</td>
+        </tr>
+        <tr>
+            <td>role</td>
+            <td>String</td>
+            <td>Agent specialization (researcher, editor, etc.)</td>
+        </tr>
+        <tr>
+            <td>system_prompt</td>
+            <td>Text</td>
+            <td>Personality and behavior instructions</td>
+        </tr>
+        <tr>
+            <td>model</td>
+            <td>String</td>
+            <td>LLM model to use (default: llama3.1:8b)</td>
+        </tr>
+        <tr>
+            <td>tools</td>
+            <td>JSON[]</td>
+            <td>Enabled tools from registry</td>
+        </tr>
+        <tr>
+            <td>channels</td>
+            <td>JSON[]</td>
+            <td>Messaging channels (web, telegram)</td>
+        </tr>
+        <tr>
+            <td>schedule</td>
+            <td>String</td>
+            <td>Cron-like schedule for autonomous execution</td>
+        </tr>
+        <tr>
+            <td>memory_enabled</td>
+            <td>Boolean</td>
+            <td>Toggle semantic memory</td>
+        </tr>
+        <tr>
+            <td>max_tokens</td>
+            <td>Integer</td>
+            <td>Maximum response length</td>
+        </tr>
+        <tr>
+            <td>temperature</td>
+            <td>Float</td>
+            <td>LLM creativity level (0.0–1.0)</td>
+        </tr>
+        <tr>
+            <td>guardrails</td>
+            <td>JSON</td>
+            <td>Content filters and safety rules</td>
+        </tr>
+        <tr>
+            <td>skills</td>
+            <td>JSON[]</td>
+            <td>High-level skill tags</td>
+        </tr>
+        <tr>
+            <td>interaction_rules</td>
+            <td>JSON</td>
+            <td>Rules for inter-agent communication</td>
+        </tr>
+        <tr>
+            <td>is_active</td>
+            <td>Boolean</td>
+            <td>Enable/disable agent</td>
+        </tr>
+    </table>
+
+    <!-- 6. AGENT LIFECYCLE -->
+    <h2 id="s6" class="page-break">6. Agent Lifecycle — Create, Configure, Execute</h2>
+
+    <div class="flow-box">
+        <strong>Step 1: Create Agent (UI → API → DB)</strong>
+        <pre>
+User fills AgentForm
+    → POST /api/agents/ { name, role, system_prompt, model, tools, channels, ... }
+    → Pydantic validates AgentCreate schema
+    → SQLAlchemy inserts into `agents` table
+    → Returns AgentResponse with UUID
+</pre>
+
+        <strong>Step 2: Chat with Agent (UI → API → Runtime → LLM)</strong>
+        <pre>
+User sends message in ChatPage
+    → POST /api/chat/{agent_id} { content: "...", channel: "web" }
+    → Saves user Message to DB
+    → Calls run_agent() in runtime.py:
+        1. Build system prompt + tool instructions + memory context
+        2. Assemble message history (last 20 messages)
+        3. Call Ollama /api/chat with tools
+        4. If tool_calls: execute tools → re-call LLM with results (up to 5 rounds)
+        5. If hallucinated tool call detected: intercept → execute → re-call
+        6. Store to short-term memory (ChromaDB)
+        7. Return { response, tokens_used, tool_calls, memories_stored }
+    → Save assistant Message to DB
+    → Return response to UI
+</pre>
+
+        <strong>Step 3: Connect to Telegram</strong>
+        <pre>
+User adds "telegram" to agent's channels list
+    → PUT /api/agents/{id} { channels: ["web", "telegram"] }
+    → Agent is now discoverable by the Telegram webhook handler
+    → POST /api/telegram/setup-webhook registers with Telegram API
+</pre>
+    </div>
+
+    <!-- 7. RUNTIME ENGINE -->
+    <h2 id="s7">7. LangGraph Runtime Engine — Deep Dive</h2>
+
+    <p>The runtime engine (<code>runtime.py</code>) implements a single-turn agent execution loop inspired by
+        LangGraph's StateGraph pattern:</p>
+
+    <div class="diagram-box">
+        ┌──────────────┐
+        │ User Input │
+        └──────┬───────┘
+        ▼
+        ┌──────────────────────┐
+        │ Build System Prompt │
+        │ + Tool Instructions │
+        │ + Memory Context │
+        └──────────┬───────────┘
+        ▼
+        ┌──────────────────────┐
+        │ Assemble Messages │
+        │ (history + current) │
+        └──────────┬───────────┘
+        ▼
+        ┌──────────────────────────────┐
+        │ Call Ollama LLM │
+        │ POST /api/chat │
+        │ { messages, tools, options }│
+        └──────────────┬───────────────┘
+        ▼
+        ┌───────────────┐
+        ┌─NO─┤ Tool Calls? ├─YES─┐
+        │ └───────────────┘ │
+        ▼ ▼
+        ┌────────────────┐ ┌──────────────────────┐
+        │ Check for fake │ │ Execute Tools via │
+        │ JSON tool calls│ │ TOOL_REGISTRY │
+        │ in response │ │ (up to 5 rounds) │
+        └───────┬────────┘ └──────────┬────────────┘
+        │ │
+        ┌────┴────┐ │
+        ┌─NO─┤ Found? ├─YES──┐ │
+        │ └─────────┘ │ │
+        │ ▼ │
+        │ ┌──────────────────┐ │
+        │ │ Intercept: │ │
+        │ │ • Map tool name │ │
+        │ │ • Parse args │ │
+        │ │ • Execute tool │ │
+        │ │ • Re-call LLM │ │
+        │ └────────┬─────────┘ │
+        │ │ │
+        └───────────────────┼─────────────────┘
+        ▼
+        ┌────────────────────┐
+        │ Store to Memory │
+        │ (STM: user + AI) │
+        └────────┬───────────┘
+        ▼
+        ┌────────────────────┐
+        │ Return Response │
+        │ + token count │
+        │ + tool call log │
+        └────────────────────┘
+    </div>
+
+    <h3>7.1 Hallucination Interceptor</h3>
+    <p>Smaller models like <code>llama3.1:8b</code> sometimes "hallucinate" tool calls by writing JSON in their response
+        text instead of using the proper tool-calling mechanism. The interceptor handles this gracefully:</p>
+    <ol>
+        <li>Scans the response text for patterns like <code>{"name": "google_search", ...}</code></li>
+        <li>Maps hallucinated tool names to real ones (e.g., <code>google_search</code> → <code>web_search</code>)</li>
+        <li>Parses arguments including nested JSON and arrays</li>
+        <li>Executes the real tool and re-calls the LLM with actual results</li>
+        <li>For array arguments (e.g., multiple search queries), calls the tool once per item</li>
+    </ol>
+
+    <h3>7.2 Tool Calling Loop</h3>
+    <p>When the LLM produces proper <code>tool_calls</code> in its response:</p>
+    <ol>
+        <li>Each tool call is looked up in <code>TOOL_REGISTRY</code></li>
+        <li>The tool is invoked with the provided arguments</li>
+        <li>Special handling for <code>remember_fact</code>: intercepts the <code>__REMEMBER__:</code> prefix and stores
+            the fact in long-term memory</li>
+        <li>Tool results are appended to the conversation and the LLM is called again</li>
+        <li>This loops for up to <strong>5 rounds</strong> of tool calls to prevent infinite loops</li>
+    </ol>
+
+    <!-- 8. TOOL CALLING -->
+    <h2 id="s8" class="page-break">8. Tool Calling Architecture</h2>
+
+    <p>Tools are registered as plain Python functions decorated with LangChain's <code>@tool</code> decorator, making
+        them compatible with both LangGraph's ToolNode and our direct Ollama integration:</p>
+
+    <table>
+        <tr>
+            <th>Tool</th>
+            <th>Description</th>
+            <th>Safety Measures</th>
+        </tr>
+        <tr>
+            <td><code>web_search</code></td>
+            <td>DuckDuckGo search, returns top 5 results with titles, snippets, and URLs</td>
+            <td>Rate-limited by ddgs library</td>
+        </tr>
+        <tr>
+            <td><code>calculator</code></td>
+            <td>Evaluates math expressions (supports sqrt, sin, cos, log, etc.)</td>
+            <td>Sandboxed eval with <code>__builtins__: {}</code>, only math functions allowed</td>
+        </tr>
+        <tr>
+            <td><code>code_executor</code></td>
+            <td>Runs Python code in an isolated subprocess</td>
+            <td>10-second timeout, temporary file, subprocess isolation</td>
+        </tr>
+        <tr>
+            <td><code>file_reader</code></td>
+            <td>Reads file contents (up to 10KB)</td>
+            <td>Path traversal protection — only allows files within CWD</td>
+        </tr>
+        <tr>
+            <td><code>weather</code></td>
+            <td>Current weather via wttr.in (no API key needed)</td>
+            <td>10-second HTTP timeout</td>
+        </tr>
+        <tr>
+            <td><code>summarizer</code></td>
+            <td>Extractive summary (first, middle, last sentences)</td>
+            <td>Pure text processing, no external calls</td>
+        </tr>
+        <tr>
+            <td><code>current_datetime</code></td>
+            <td>Returns current UTC date/time</td>
+            <td>Read-only</td>
+        </tr>
+        <tr>
+            <td><code>remember_fact</code></td>
+            <td>Stores a fact to long-term memory</td>
+            <td>Intercepted by runtime, stored via ChromaDB</td>
+        </tr>
+    </table>
+
+    <h3>Ollama Tool Format</h3>
+    <p>Tools are converted from LangChain format to Ollama's native format:</p>
+    <pre>
+{
+  "type": "function",
+  "function": {
+    "name": "web_search",
+    "description": "Search the web using DuckDuckGo...",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": { "type": "string", "description": "The search query" }
+      },
+      "required": ["query"]
+    }
+  }
+}
+</pre>
+
+    <!-- 9. MEMORY SYSTEM -->
+    <h2 id="s9">9. Semantic Memory System</h2>
+
+    <p>The memory service (<code>memory.py</code>) implements a <strong>two-tier architecture</strong> using ChromaDB as
+        the vector store and <code>all-MiniLM-L6-v2</code> for local embeddings:</p>
+
+    <div class="diagram-box">
+        ┌─────────────────┐
+        │ User Message │
+        └────────┬────────┘
+        ▼
+        ┌──────────────────────┐
+        │ build_memory_context │
+        └────────┬─────────────┘
+        │
+        ┌───────────┴───────────┐
+        ▼ ▼
+        ┌───────────────────┐ ┌───────────────────┐
+        │ Short-Term Memory│ │ Long-Term Memory │
+        │ (stm_{agent_id}) │ │ (ltm_{agent_id}) │
+        ├───────────────────┤ ├───────────────────┤
+        │ ChromaDB │ │ ChromaDB │
+        │ Collection │ │ Collection │
+        │ │ │ │
+        │ Stores: every │ │ Stores: explicit │
+        │ user + assistant │ │ facts via │
+        │ message │ │ remember_fact │
+        │ │ │ tool or manual │
+        │ Retrieves: top 5 │ │ │
+        │ semantically │ │ Retrieves: top 5 │
+        │ similar past msgs │ │ relevant facts │
+        └───────────────────┘ └───────────────────┘
+        │ │
+        └───────────┬───────────┘
+        ▼
+        ┌─────────────────────┐
+        │ Injected into │
+        │ System Prompt as: │
+        │ "[Memory] ..." │
+        └─────────────────────┘
+        </pre>
+    </div>
+
+    <h3>Key Design Decisions</h3>
+    <ul>
+        <li><strong>Local embeddings</strong> — <code>all-MiniLM-L6-v2</code> runs locally (~80MB). No API calls, no
+            cost, instant.</li>
+        <li><strong>Cosine similarity</strong> — ChromaDB collections use <code>hnsw:space = cosine</code> for semantic
+            matching.</li>
+        <li><strong>Per-agent isolation</strong> — Each agent has its own STM and LTM collections
+            (<code>stm_{uuid}</code>, <code>ltm_{uuid}</code>). Agents don't accidentally recall another agent's
+            memories.</li>
+        <li><strong>Automatic storage</strong> — Every user message and assistant response is stored in STM after each
+            turn. LTM storage is explicit (via <code>remember_fact</code> tool or manual API).</li>
+        <li><strong>UI Memory Viewer</strong> — The AgentsPage includes a modal to browse long-term facts, add/delete
+            facts manually, and perform semantic recall searches.</li>
+    </ul>
+
+    <!-- 10. WORKFLOW ENGINE -->
+    <h2 id="s10" class="page-break">10. Workflow Engine — Multi-Agent Orchestration</h2>
+
+    <p>The workflow engine (<code>workflow_engine.py</code>) executes directed graphs of agents using <strong>BFS
+            traversal</strong>. Each node runs an agent, and edges carry the output text to the next agent.</p>
+
+    <h3>10.1 Graph Format</h3>
+    <pre>
+{
+  "nodes": [
+    { "id": "n1", "agent_id": "uuid-of-researcher", "label": "Researcher" },
+    { "id": "n2", "agent_id": "uuid-of-editor",     "label": "Editor"     }
+  ],
+  "edges": [
+    { "id": "e1", "source": "n1", "target": "n2", "condition": null }
+  ]
+}
+</pre>
+
+    <h3>10.2 Execution Flow</h3>
+    <div class="diagram-box">
+        1. Identify START nodes (nodes with no incoming edges)
+        2. Initialize BFS queue with start nodes + user input
+        3. For each node in queue:
+        a. If fan-in node (multiple incoming edges):
+        - Wait until ALL source nodes have completed
+        - Merge their outputs with labeled sections
+        b. Load agent from DB
+        c. Execute agent via run_agent() with the input text
+        d. Store output in node_outputs map
+        e. For each outgoing edge:
+        - Evaluate condition (contains, not_contains, max_iterations)
+        - If condition passes, add target to queue with output
+        4. Collect terminal nodes (nodes with no outgoing edges) as final output
+        5. Return { status, output, steps }
+    </div>
+
+    <h3>10.3 Supported Patterns</h3>
+    <table>
+        <tr>
+            <th>Pattern</th>
+            <th>Description</th>
+            <th>Example</th>
+        </tr>
+        <tr>
+            <td><strong>Sequential</strong></td>
+            <td>A → B → C</td>
+            <td>Researcher → Summarizer → Reviewer</td>
+        </tr>
+        <tr>
+            <td><strong>Fan-out</strong></td>
+            <td>A → B, A → C</td>
+            <td>Dispatcher → Sports Reporter, Tech Reporter</td>
+        </tr>
+        <tr>
+            <td><strong>Fan-in</strong></td>
+            <td>B → D, C → D</td>
+            <td>All reporters → Editor (merged output)</td>
+        </tr>
+        <tr>
+            <td><strong>Conditional</strong></td>
+            <td>A → B (if "APPROVE")</td>
+            <td>Reviewer → Publisher (only if approved)</td>
+        </tr>
+        <tr>
+            <td><strong>Feedback Loop</strong></td>
+            <td>A → B → A (max 3)</td>
+            <td>Writer → Critic → Writer (iterate)</td>
+        </tr>
+    </table>
+
+    <h3>10.4 Fan-In Merging</h3>
+    <p>When multiple agents feed into one node (e.g., 3 reporters → 1 editor), the engine:</p>
+    <ol>
+        <li>Builds a reverse adjacency map to detect fan-in nodes</li>
+        <li>Waits until all source nodes have produced output</li>
+        <li>Merges outputs with clear labels:</li>
+    </ol>
+    <pre>
+--- Output from Sports Reporter ---
+[sports news content]
+
+--- Output from Tech Reporter ---
+[tech news content]
+
+--- Output from Politics Reporter ---
+[politics news content]
+</pre>
+    <p>The fan-in node (editor) receives this merged text as its input and produces a single unified response. A
+        deduplication guard (<code>node_id in node_outputs</code>) ensures each node runs exactly once.</p>
+
+    <h3>10.5 Pre-Built Workflow Templates</h3>
+    <p>Two templates are provided out of the box:</p>
+    <ol>
+        <li><strong>Research &amp; Summarize</strong> — A researcher gathers information, then a summarizer condenses
+            it.</li>
+        <li><strong>Customer Support Escalation</strong> — Frontline bot → Specialist (if "ESCALATE") → Manager (if
+            still unresolved). Demonstrates conditional routing.</li>
+    </ol>
+
+    <!-- 11. TELEGRAM INTEGRATION -->
+    <h2 id="s11" class="page-break">11. Telegram Integration</h2>
+
+    <p>The Telegram integration (<code>telegram.py</code>) provides a complete bot experience through webhook-based
+        communication:</p>
+
+    <div class="diagram-box">
+        ┌──────────────┐ HTTPS ┌───────────┐ HTTP ┌──────────────────┐
+        │ Telegram │─────────────►│ ngrok │────────────►│ FastAPI │
+        │ User sends │ │ (tunnel) │ │ POST /api/ │
+        │ message │ │ │ │ telegram/webhook│
+        └──────────────┘ └───────────┘ └────────┬─────────┘
+        │
+        ┌────────────┴────────────┐
+        │ telegram_webhook() │
+        │ 1. Parse message │
+        │ 2. Deduplicate (msg_id) │
+        │ 3. Return {"ok": true} │
+        │ 4. asyncio.create_task()│
+        └────────────┬────────────┘
+        │
+        ┌────────────┴────────────┐
+        │ _handle_message() [bg] │
+        │ 1. Send "typing..." ✏️ │
+        │ 2. Find workflow/agent │
+        │ 3. Execute │
+        │ 4. Send response │
+        └─────────────────────────┘
+    </div>
+
+    <h3>11.1 Key Design Choices</h3>
+    <table>
+        <tr>
+            <th>Challenge</th>
+            <th>Solution</th>
+        </tr>
+        <tr>
+            <td>Telegram retries webhook if no quick 200 response</td>
+            <td><strong>Background processing</strong> — <code>asyncio.create_task()</code> returns 200 immediately,
+                processes in background</td>
+        </tr>
+        <tr>
+            <td>Duplicate messages from retries</td>
+            <td><strong>Message deduplication</strong> — tracks <code>message_id</code> in a set, skips if already seen
+            </td>
+        </tr>
+        <tr>
+            <td>User doesn't know bot is working</td>
+            <td><strong>Typing indicator</strong> — <code>sendChatAction("typing")</code> before processing</td>
+        </tr>
+        <tr>
+            <td>Long responses exceed Telegram's 4096-char limit</td>
+            <td><strong>Chunking</strong> — splits responses into 4000-char chunks</td>
+        </tr>
+        <tr>
+            <td>Want to use workflows, not just single agents</td>
+            <td><strong>Workflow priority</strong> — checks for workflow with "telegram" channel first, falls back to
+                agent</td>
+        </tr>
+    </table>
+
+    <h3>11.2 Setup Flow</h3>
+    <ol>
+        <li>Create a bot via <code>@BotFather</code> on Telegram → get bot token</li>
+        <li>Set <code>TELEGRAM_BOT_TOKEN</code> and <code>TELEGRAM_WEBHOOK_URL</code> in <code>.env</code></li>
+        <li>Start ngrok tunnel: <code>ngrok http 8000</code></li>
+        <li>Set webhook URL to <code>https://&lt;ngrok-url&gt;/api/telegram/webhook</code></li>
+        <li>Call <code>POST /api/telegram/setup-webhook</code> to register with Telegram</li>
+        <li>Assign an agent or workflow to the "telegram" channel via the UI</li>
+    </ol>
+
+    <!-- 12. FRONTEND ARCHITECTURE -->
+    <h2 id="s12" class="page-break">12. Frontend Architecture</h2>
+
+    <h3>12.1 Page Structure</h3>
+    <table>
+        <tr>
+            <th>Page</th>
+            <th>Purpose</th>
+            <th>Key Features</th>
+        </tr>
+        <tr>
+            <td><strong>AgentsPage</strong></td>
+            <td>Agent CRUD + configuration</td>
+            <td>Card grid, create/edit modal, tool picker, channel picker, memory viewer modal (semantic recall, fact
+                management)</td>
+        </tr>
+        <tr>
+            <td><strong>WorkflowsPage</strong></td>
+            <td>Visual workflow builder</td>
+            <td>React Flow canvas, drag-and-drop nodes, edge conditions, Telegram toggle, templates, run with input,
+                expandable output panel (formatted/JSON/steps views)</td>
+        </tr>
+        <tr>
+            <td><strong>ChatPage</strong></td>
+            <td>Live chat with agents</td>
+            <td>Agent selector, message history, real-time conversation, tool call display</td>
+        </tr>
+        <tr>
+            <td><strong>MonitorPage</strong></td>
+            <td>System observability</td>
+            <td>Live agent logs, workflow execution logs, token usage tracking, per-agent filtering</td>
+        </tr>
+    </table>
+
+    <h3>12.2 API Client Architecture</h3>
+    <p>A typed API client (<code>api.ts</code>) provides a clean abstraction over the REST API:</p>
+    <pre>
+// TypeScript interfaces match Pydantic schemas exactly
+export interface Agent { id: string; name: string; role: string; ... }
+export interface Workflow { id: string; name: string; graph: Record&lt;string, any&gt;; channels: string[]; ... }
+
+// API namespaces
+export const agentsApi = {
+  list: ()    => request&lt;Agent[]&gt;('/agents/'),
+  create: (d) => request&lt;Agent&gt;('/agents/', { method: 'POST', body: JSON.stringify(d) }),
+  update: ... delete: ...
+};
+export const workflowsApi = { ... };
+export const chatApi = { ... };
+export const memoryApi = { ... };
+</pre>
+
+    <h3>12.3 Workflow Output Panel</h3>
+    <p>After a workflow execution, an expandable overlay (90vw × 85vh) displays results in three tabs:</p>
+    <ul>
+        <li><strong>Formatted</strong> — Parses <code>--- Agent Name ---</code> sections into styled cards</li>
+        <li><strong>JSON</strong> — Raw execution result</li>
+        <li><strong>Steps</strong> — Per-node execution breakdown with input/output previews and token counts</li>
+    </ul>
+
+    <!-- 13. MONITORING -->
+    <h2 id="s13">13. Monitoring &amp; Observability</h2>
+
+    <p>The platform provides real-time visibility into agent operations:</p>
+
+    <ul>
+        <li><strong>Agent Logs</strong> (<code>agent_logs</code> table) — Every significant event is logged:
+            <ul>
+                <li><code>node_started</code> — Workflow node begins execution (with input preview)</li>
+                <li><code>node_completed</code> — Node finishes (with output preview + token count)</li>
+                <li><code>agent_not_found</code> — Missing agent error in workflow</li>
+            </ul>
+        </li>
+        <li><strong>Message History</strong> — All messages (user, assistant, inter-agent) are persisted with:
+            <ul>
+                <li>Channel tracking (<code>web</code>, <code>telegram</code>, <code>inter-agent</code>)</li>
+                <li>Token usage per message</li>
+                <li>Cost tracking field (ready for paid model integration)</li>
+                <li>Meta info (Telegram chat_id, sender name, tool calls)</li>
+            </ul>
+        </li>
+        <li><strong>Workflow Executions</strong> — Each execution records status, input/output data, timestamps, and
+            per-step traces</li>
+        <li><strong>Monitor UI</strong> — The MonitorPage fetches logs and messages in real-time with per-agent
+            filtering</li>
+    </ul>
+
+    <!-- 14. TESTING -->
+    <h2 id="s14">14. Testing Strategy</h2>
+
+    <p>The test suite (<code>test_critical_paths.py</code>) covers the three critical paths specified in the challenge
+        requirements:</p>
+
+    <table>
+        <tr>
+            <th>Category</th>
+            <th>Tests</th>
+            <th>What's Tested</th>
+        </tr>
+        <tr>
+            <td><strong>Agent CRUD</strong></td>
+            <td>6 tests</td>
+            <td>Create agent, list agents, get agent, get not found, update agent, delete agent, validation errors</td>
+        </tr>
+        <tr>
+            <td><strong>Workflow Operations</strong></td>
+            <td>4 tests</td>
+            <td>Create workflow, list workflows, template filtering, delete workflow</td>
+        </tr>
+        <tr>
+            <td><strong>Message Delivery</strong></td>
+            <td>3+ tests</td>
+            <td>Chat sends/receives (mocked LLM), chat agent not found, message history ordering</td>
+        </tr>
+    </table>
+
+    <h3>Test Infrastructure</h3>
+    <ul>
+        <li><strong>Database</strong>: SQLite in-memory (<code>sqlite+aiosqlite:///:memory:</code>) for fast, isolated
+            testing — no PostgreSQL required</li>
+        <li><strong>LLM Mocking</strong>: <code>run_agent</code> is mocked with <code>AsyncMock</code> to avoid needing
+            a running Ollama instance</li>
+        <li><strong>Client</strong>: <code>httpx.AsyncClient</code> with <code>ASGITransport</code> for direct FastAPI
+            testing without a running server</li>
+        <li><strong>Fixtures</strong>: Auto-use <code>setup_db</code> creates/drops tables for each test, ensuring
+            complete isolation</li>
+    </ul>
+
+    <pre>
+# Run tests:
+cd backend && python -m pytest tests/ -v
+
+# Expected: 16 passed
+</pre>
+
+    <!-- 15. SECURITY -->
+    <h2 id="s15" class="page-break">15. Security Considerations</h2>
+
+    <table>
+        <tr>
+            <th>Concern</th>
+            <th>Mitigation</th>
+        </tr>
+        <tr>
+            <td>Code execution tool</td>
+            <td>Runs in isolated subprocess with 10-second timeout. Temporary file deleted after execution.</td>
+        </tr>
+        <tr>
+            <td>File reader path traversal</td>
+            <td>Validates <code>os.path.abspath()</code> starts with CWD. Blocks <code>../../</code> attacks.</td>
+        </tr>
+        <tr>
+            <td>Calculator eval injection</td>
+            <td>Sandboxed with <code>__builtins__: {}</code>. Only math functions exposed.</td>
+        </tr>
+        <tr>
+            <td>Telegram bot token</td>
+            <td>Stored in <code>.env</code> file, never hardcoded. <code>.gitignore</code> excludes <code>.env</code>.
+            </td>
+        </tr>
+        <tr>
+            <td>CORS</td>
+            <td>Restricted to <code>localhost:5173</code> and <code>localhost:3000</code> only.</td>
+        </tr>
+        <tr>
+            <td>SQL injection</td>
+            <td>SQLAlchemy ORM with parameterized queries. No raw SQL.</td>
+        </tr>
+        <tr>
+            <td>Input validation</td>
+            <td>Pydantic schemas validate all API inputs (min_length, max_length, types).</td>
+        </tr>
+        <tr>
+            <td>Docker images</td>
+            <td>Multi-stage builds with Alpine 3.22 for minimal attack surface.</td>
+        </tr>
+        <tr>
+            <td>Memory leak (Telegram dedup)</td>
+            <td>Set evicts after 1000 entries to prevent unbounded growth.</td>
+        </tr>
+    </table>
+
+    <!-- 16. DEPLOYMENT -->
+    <h2 id="s16">16. Deployment — Docker &amp; Local</h2>
+
+    <h3>16.1 Local Development (Single Setup)</h3>
+    <pre>
+# 1. Clone and enter project
+git clone &lt;repo&gt; && cd agents
+
+# 2. Start PostgreSQL and create the database
+brew services start postgresql@16
+psql postgres -c "CREATE USER agents WITH PASSWORD 'agents_dev';"
+psql postgres -c "CREATE DATABASE agents_platform OWNER agents;"
+psql postgres -c "GRANT ALL PRIVILEGES ON DATABASE agents_platform TO agents;"
+psql agents_platform -c "GRANT ALL ON SCHEMA public TO agents;"
+
+# 3. Start Ollama and pull the model (~4.7 GB download)
+ollama serve &amp;
+ollama pull llama3.1:8b
+
+# 4. Backend
+cd backend
+python3 -m venv ../venv && source ../venv/bin/activate
+pip install -r requirements.txt
+cp ../.env.example .env    # defaults work out of the box
+uvicorn app.main:app --reload --port 8000
+
+# 5. Frontend (new terminal)
+cd frontend
+npm install && npm run dev
+
+# 6. Open http://localhost:5173
+</pre>
+
+    <h3>16.2 Docker Compose (Full Stack)</h3>
+    <pre>
+# 1. Create backend .env from template
+cp .env.example backend/.env
+
+# 2. Build and start all services
+docker compose up --build
+
+# 3. Pull the LLM model (first run only, ~4.7 GB)
+docker compose exec ollama ollama pull llama3.1:8b
+
+# 4. Open http://localhost:5173 (frontend) or http://localhost:8000/docs (API)
+
+# Stop everything:
+docker compose down
+
+# Full reset (wipe DB + model data):
+docker compose down -v
+</pre>
+
+    <div class="section-note">
+        <strong>Note:</strong> The <code>.env</code> file is gitignored. When running inside Docker, the backend reads
+        <code>DATABASE_URL</code> and <code>OLLAMA_BASE_URL</code> from docker-compose.yml environment overrides,
+        so the <code>.env</code> values for those are only used in local development. Telegram tokens must be set
+        in <code>backend/.env</code> if needed.
+    </div>
+
+    <p>The <code>docker-compose.yml</code> defines 5 services with health checks and proper dependency ordering:</p>
+    <ul>
+        <li><strong>postgres</strong> — PostgreSQL 16 Alpine with health check
+            (<code>pg_isready -U agents -d agents_platform</code>)</li>
+        <li><strong>redis</strong> — Redis 7 Alpine with health check (<code>redis-cli ping</code>)</li>
+        <li><strong>ollama</strong> — Official Ollama image with persistent volume for models</li>
+        <li><strong>backend</strong> — Python 3.12-slim with hot-reload via volume mount, depends on postgres + redis +
+            ollama</li>
+        <li><strong>frontend</strong> — Uses the <code>build</code> stage of the multi-stage Dockerfile (Node 22 Alpine)
+            with source volume mount and <code>npm run dev</code> for hot-reload. The production Nginx stage is used
+            only for standalone deployment.</li>
+    </ul>
+
+    <!-- 17. TRADE-OFFS -->
+    <h2 id="s17" class="page-break">17. Trade-offs &amp; Design Decisions</h2>
+
+    <table>
+        <tr>
+            <th>Decision</th>
+            <th>Why</th>
+            <th>Trade-off</th>
+        </tr>
+        <tr>
+            <td>Ollama (local LLM) instead of OpenAI API</td>
+            <td>Zero cost, full privacy, no API keys needed, runs offline. Challenge requires "run fully local."</td>
+            <td>Smaller model (8B params) means less capable reasoning and more frequent tool call hallucinations.
+                Mitigated by the hallucination interceptor.</td>
+        </tr>
+        <tr>
+            <td>Direct Ollama API calls instead of LangChain ChatOllama</td>
+            <td>More control over tool format, token counting, and error handling. Avoids LangChain version
+                compatibility issues.</td>
+            <td>Slightly more boilerplate for message format conversion. But simpler debugging.</td>
+        </tr>
+        <tr>
+            <td>BFS workflow engine instead of async parallel execution</td>
+            <td>Simpler to reason about, deterministic ordering, easier to debug fan-in merging.</td>
+            <td>Agents in fan-out patterns run sequentially, not in parallel. Acceptable for local LLM (single GPU
+                bottleneck anyway).</td>
+        </tr>
+        <tr>
+            <td>ChromaDB embedded instead of Pinecone/Weaviate</td>
+            <td>No external service needed. Runs in-process. Perfect for local-first development.</td>
+            <td>Not suitable for production-scale vector search. But meets challenge requirements.</td>
+        </tr>
+        <tr>
+            <td>Background task for Telegram instead of message queue</td>
+            <td>Simple <code>asyncio.create_task()</code> avoids needing Celery/RabbitMQ infrastructure.</td>
+            <td>No retry semantics if the background task fails. Mitigated by try/catch with error message to user.</td>
+        </tr>
+        <tr>
+            <td>React Flow for workflow builder</td>
+            <td>Purpose-built library for node-based editors. Handles pan, zoom, drag-and-drop, edge rendering.</td>
+            <td>Bundle size is significant (~200KB). Worth it for the functionality provided.</td>
+        </tr>
+        <tr>
+            <td>No Alembic migrations — using <code>create_all</code></td>
+            <td>Faster development iteration. Schema changes applied via manual ALTER TABLE.</td>
+            <td>Not production-ready for schema evolution. Would add Alembic for a production deployment.</td>
+        </tr>
+    </table>
+
+    <div class="section-note">
+        <strong>Overall Philosophy:</strong> Optimize for a working end-to-end demo (40% weight) with clean architecture
+        (30% weight). Every decision prioritizes "does it work locally with zero external dependencies?" while
+        maintaining code quality and clear separation of concerns.
+    </div>
+
+    <!-- FOOTER -->
+    <div
+        style="margin-top: 60px; padding-top: 20px; border-top: 2px solid #e0e0e0; text-align: center; color: #999; font-size: 12px;">
+        <p>AgentFlow — AI Agent Orchestration Platform</p>
+        <p>Prepared for Yuno AI Team · Confidential · May 2026</p>
+    </div>
+
+</body>
+
+</html>

@@ -30,6 +30,7 @@ def web_search(query: str) -> str:
         return f"Search error: {str(e)}"
 
 
+# TODO: Replace this with a called external API for calculations if possible, to avoid security risks of eval. If eval must be used, consider using a restricted Python environment or a math expression parser library instead.
 @tool
 def calculator(expression: str) -> str:
     """Evaluate a mathematical expression. Supports basic math and functions like sqrt, sin, cos, log."""
@@ -42,6 +43,7 @@ def calculator(expression: str) -> str:
         return f"Calculation error: {str(e)}"
 
 
+# TODO: Use a more secure sandboxing approach for code execution, such as a containerized environment or a restricted Python interpreter, to prevent potential security risks.
 @tool
 def code_executor(code: str) -> str:
     """Execute a Python code snippet in an isolated subprocess and return stdout/stderr.
@@ -72,6 +74,7 @@ def code_executor(code: str) -> str:
         os.unlink(tmp_path)
 
 
+# TODO: Add extension to file extensions this file reader can access, and add a file size limit. Also consider adding a file writing tool with similar safeguards.
 @tool
 def file_reader(filepath: str) -> str:
     """Read the contents of a file. Only allows reading from the current working directory."""
@@ -106,6 +109,7 @@ def weather(location: str) -> str:
         return f"Weather error: {str(e)}"
 
 
+# TODO: Fix the summarizer to use a real LLM-based approach instead of a naive extractive method
 @tool
 def summarizer(text: str) -> str:
     """Summarize a long text into key bullet points. Returns a condensed version."""

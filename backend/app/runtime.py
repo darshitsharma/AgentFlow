@@ -151,6 +151,7 @@ async def run_agent(
     full_system = system_prompt
 
     # Inject available tool names so the model doesn't hallucinate tools
+    # TODO: Move all prompts in entire codebase to a central location and make them more robust and reusable, e.g. with few-shot examples and better instructions around tool calling format.
     if tool_objects:
         tool_list = ", ".join(t.name for t in tool_objects)
         full_system += (
